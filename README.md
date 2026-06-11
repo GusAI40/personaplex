@@ -7,6 +7,8 @@
 
 PersonaPlex is a real-time, full-duplex speech-to-speech conversational model that enables persona control through text-based role prompts and audio-based voice conditioning. Trained on a combination of synthetic and real conversations, it produces natural, low-latency spoken interactions with a consistent persona. PersonaPlex is based on the [Moshi](https://arxiv.org/abs/2410.00037) architecture and weights.
 
+> 🗺️ New to this repository? See [REPO_MAP.md](REPO_MAP.md) for a non-technical visual tour of how everything fits together.
+
 <p align="center">
   <img src="assets/architecture_diagram.png" alt="PersonaPlex Model Architecture">
   <br>
@@ -61,6 +63,24 @@ SSL_DIR=$(mktemp -d); python -m moshi.server --ssl "$SSL_DIR" --cpu-offload
 Access the Web UI from a browser at `localhost:8998` if running locally, otherwise look for the access link printed by the script:
 ```
 Access the Web UI directly at https://11.54.401.33:8998
+```
+
+### Run with Docker
+
+Alternatively, run the server with Docker Compose (requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)):
+
+```bash
+cp .env.example .env   # then put your HF_TOKEN in .env
+docker compose up --build
+```
+
+The server listens on `https://localhost:8998`. Model weights are cached in `./.cache` between runs.
+
+To build and run the development web client instead of the server-bundled UI:
+
+```bash
+docker build -t personaplex-client client/
+docker run -p 5173:5173 personaplex-client
 ```
 
 ### Offline Evaluation

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { ProxyOptions, defineConfig, loadEnv } from "vite";
 import topLevelAwait from "vite-plugin-top-level-await";
 
@@ -9,13 +10,16 @@ export default defineConfig(({mode}) => {
       changeOrigin: true,
     },
   } : {};
+  // Serve over HTTPS only when local certs exist (required for microphone
+  // access from non-localhost hosts); plain HTTP works on localhost.
+  const httpsConf =
+    fs.existsSync("./cert.pem") && fs.existsSync("./key.pem")
+      ? { cert: "./cert.pem", key: "./key.pem" }
+      : undefined;
   return {
     server: {
       host: "0.0.0.0",
-      https: {
-        cert: "./cert.pem",
-        key: "./key.pem",
-      },
+      https: httpsConf,
       proxy:{
         ...proxyConf,
       }

@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:watch": "nodemon --watch src --ext ts,js,css,html --exec \"npm run build\"",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "prettier": "prettier --write .",
     "preview": "vite preview"
   },
@@ -16,7 +16,8 @@
     "@eslint/js": "^9.3.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
-    "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "autoprefixer": "^10.4.19",
     "daisyui": "^4.12.2",
     "eslint": "^8.57.0",
@@ -27,7 +28,6 @@
     "nodemon": "^3.1.11",
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",
-    "prettier-eslint": "^16.3.0",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.2.2",
@@ -42,7 +42,6 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.1",
     "webm-duration-fix": "^1.0.4",
-    "ws": "^8.16.0",
     "zod": "^3.23.8"
   }
 }

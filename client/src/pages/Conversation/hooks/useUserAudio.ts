@@ -33,6 +33,7 @@ export const useUserAudio = ({
   );
 
   //TODO: Fix any type for recorder
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opus-recorder ships no types
   const recorder = useRef<any>(null);
 
   const getMediaStream = useCallback(async () => {
@@ -42,9 +43,9 @@ export const useUserAudio = ({
         await window.navigator.mediaDevices.getUserMedia(constraints);
       setStatus(UserMediaStatuses.IDLE);
       return stream;
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setError(error.name);
+      setError(error instanceof Error ? error.name : String(error));
       setStatus(UserMediaStatuses.ERROR);
       return null;
     }

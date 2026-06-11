@@ -16,7 +16,7 @@ export const ServerAudio: FC<ServerAudioProps> = ({ setGetAudioStats, theme }) =
     <>
       {hasCriticalDelay && (
         <div className="fixed left-0 top-0 flex w-screen justify-between bg-red-500 p-2 text-center">
-          <p>A connection issue has been detected, you've been reconnected</p>
+          <p>A connection issue has been detected, you&apos;ve been reconnected</p>
           <button
             onClick={async () => {
               setHasCriticalDelay(false);

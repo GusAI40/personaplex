@@ -27,7 +27,7 @@ const ServersInfoSchema = z.object({
   }),
 });
 
-const parseInfo = (infos: any) => {
+const parseInfo = (infos: unknown) => {
   const serverInfo =  ServersInfoSchema.safeParse(infos);
   if (!serverInfo.success) {
     console.error(serverInfo.error);

@@ -1,1 +1,9 @@
 .cache
+.git
+.github
+.env
+.env.*
+client
+assets
+**/node_modules
+**/__pycache__

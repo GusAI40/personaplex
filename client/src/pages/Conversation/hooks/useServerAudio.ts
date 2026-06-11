@@ -73,7 +73,7 @@ export const useServerAudio = ({setGetAudioStats}: useServerAudioArgs) => {
   }, []);
 
   const onWorkerMessage = useCallback(
-    (e: MessageEvent<any>) => {
+    (e: MessageEvent<Float32Array[]>) => {
       if (!e.data) {
         return;
       }

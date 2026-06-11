@@ -20,9 +20,9 @@ export const ServerAudioStats = ({ getAudioStats }: ServerAudioStatsProps) => {
   const movingAverageCount = useRef<number>(0.);
   const movingBeta = 0.85;
 
-  let convertMinSecs = (total_secs: number) => {
+  const convertMinSecs = (total_secs: number) => {
     // convert secs to the format mm:ss.cc
-    let mins = (Math.floor(total_secs / 60)).toString();
+    const mins = (Math.floor(total_secs / 60)).toString();
     let secs = (Math.floor(total_secs) % 60).toString();
     let cents = (Math.floor(100 * (total_secs - Math.floor(total_secs)))).toString();
     if (secs.length < 2) {

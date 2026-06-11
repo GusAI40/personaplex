@@ -1,6 +1,5 @@
 import moshiProcessorUrl from "../../audio-processor.ts?worker&url";
 import { FC, useEffect, useState, useCallback, useRef, MutableRefObject } from "react";
-import eruda from "eruda";
 import { useSearchParams } from "react-router-dom";
 import { Conversation } from "../Conversation/Conversation";
 import { Button } from "../../components/Button/Button";
@@ -136,15 +135,22 @@ export const Queue:FC = () => {
   const audioContext = useRef<AudioContext | null>(null);
   const worklet = useRef<AudioWorkletNode | null>(null);
   
-  // enable eruda in development
+  // enable eruda in development only; dynamic import keeps it out of the production bundle
   useEffect(() => {
-    if(env.VITE_ENV === "development") {
-      eruda.init();
+    if (env.VITE_ENV !== "development") {
+      return;
     }
-    () => {
-      if(env.VITE_ENV === "development") {
-        eruda.destroy();
+    let active = true;
+    let erudaInstance: { destroy: () => void } | undefined;
+    void import("eruda").then(({ default: eruda }) => {
+      if (active) {
+        eruda.init();
+        erudaInstance = eruda;
       }
+    });
+    return () => {
+      active = false;
+      erudaInstance?.destroy();
     };
   }, []);
 
@@ -171,7 +177,7 @@ export const Queue:FC = () => {
     if(worklet.current) {
       return;
     }
-    let ctx = audioContext.current;
+    const ctx = audioContext.current;
     ctx.resume();
     try {
       worklet.current = new AudioWorkletNode(ctx, 'moshi-processor');

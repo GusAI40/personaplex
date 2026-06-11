@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- AudioWorklet globals (sampleRate, currentFrame, AudioWorkletProcessor) are not in the DOM lib
 function asMs(samples) {
   return (samples * 1000 / sampleRate).toFixed(1);
 }
@@ -14,7 +14,7 @@ class MoshiProcessor extends AudioWorkletProcessor {
     console.log(currentTime);
 
     // Buffer length definitions
-    let frameSize = asSamples(80);
+    const frameSize = asSamples(80);
     // initialBufferSamples: we wait to have at least that many samples before starting to play
     this.initialBufferSamples = 1 * frameSize;
     // once we have enough samples, we further wait that long before starting to play.
@@ -38,7 +38,7 @@ class MoshiProcessor extends AudioWorkletProcessor {
         this.initState();
         return;
       }
-      let frame = event.data.frame;
+      const frame = event.data.frame;
       this.frames.push(frame);
       if (this.currentSamples() >= this.initialBufferSamples && !this.started) {
         this.start();
@@ -49,9 +49,9 @@ class MoshiProcessor extends AudioWorkletProcessor {
       }
       if (this.currentSamples() >= this.totalMaxBufferSamples()) {
         console.log(this.timestamp(), "Dropping packets", asMs(this.currentSamples()), asMs(this.totalMaxBufferSamples()));
-        let target = this.initialBufferSamples + this.partialBufferSamples
+        const target = this.initialBufferSamples + this.partialBufferSamples
         while (this.currentSamples() > (this.initialBufferSamples + this.partialBufferSamples)) {
-          let first = this.frames[0];
+          const first = this.frames[0];
           let to_remove = this.currentSamples() - target;
           to_remove = Math.min(first.length - this.offsetInFirstBuffer, to_remove);
           this.offsetInFirstBuffer += to_remove;
@@ -66,7 +66,6 @@ class MoshiProcessor extends AudioWorkletProcessor {
         this.maxBufferSamples = Math.min(this.maxMaxBufferWithIncrements, this.maxBufferSamples);
         console.log("Increased maxBuffer to", asMs(this.maxBufferSamples));
       }
-      let delay = this.currentSamples() / sampleRate;
       this.port.postMessage({
         totalAudioPlayed: this.totalAudioPlayed,
         actualAudioPlayed: this.actualAudioPlayed,
@@ -78,7 +77,7 @@ class MoshiProcessor extends AudioWorkletProcessor {
   }
 
   initState() {
-    this.frames = new Array();
+    this.frames = [];
     this.offsetInFirstBuffer = 0;
     this.firstOut = false;
     this.remainingPartialBufferSamples = 0;
@@ -89,7 +88,7 @@ class MoshiProcessor extends AudioWorkletProcessor {
     this.totalAudioPlayed = 0.;
     this.actualAudioPlayed = 0.;
     this.maxDelay = 0.;
-    this.minDelay = 2000.;
+    this.minDelay = 2000;
     // Debug
     this.pidx = 0;
 
@@ -129,8 +128,8 @@ class MoshiProcessor extends AudioWorkletProcessor {
     return this.started && this.frames.length > 0 && this.remainingPartialBufferSamples <= 0;
   }
 
-  process(inputs, outputs, parameters) {
-    let delay = this.currentSamples() / sampleRate;
+  process(inputs, outputs) {
+    const delay = this.currentSamples() / sampleRate;
     if (this.canPlay()) {
       this.maxDelay = Math.max(this.maxDelay, delay);
       this.minDelay = Math.min(this.minDelay, delay);
@@ -146,11 +145,10 @@ class MoshiProcessor extends AudioWorkletProcessor {
     if (this.firstOut) {
       console.log(this.timestamp(), "Audio resumed", asMs(this.currentSamples()), this.remainingPartialBufferSamples);
     }
-    let first = this.frames[0];
     let out_idx = 0;
     while (out_idx < output.length && this.frames.length) {
-      let first = this.frames[0];
-      let to_copy = Math.min(first.length - this.offsetInFirstBuffer, output.length - out_idx);
+      const first = this.frames[0];
+      const to_copy = Math.min(first.length - this.offsetInFirstBuffer, output.length - out_idx);
       output.set(first.subarray(this.offsetInFirstBuffer, this.offsetInFirstBuffer + to_copy), out_idx);
       this.offsetInFirstBuffer += to_copy;
       out_idx += to_copy;

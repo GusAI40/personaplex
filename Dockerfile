@@ -3,7 +3,7 @@ ARG BASE_IMAGE_TAG="12.4.1-runtime-ubuntu22.04"
 
 FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG} AS base
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /bin/
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -22,4 +22,4 @@ RUN mkdir -p /app/ssl
 EXPOSE 8998
 
 ENTRYPOINT []
-CMD ["/app/moshi/.venv/bin/python", "-m", "moshi.server", "--ssl", "/app/ssl"]
+CMD ["/app/moshi/.venv/bin/python", "-m", "moshi.server", "--host", "0.0.0.0", "--ssl", "/app/ssl"]

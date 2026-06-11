@@ -145,30 +145,36 @@ class ServerState:
         # self.lm_gen.top_k_text = max(1, int(request.query["text_topk"]))
         # self.lm_gen.top_k = max(1, int(request.query["audio_topk"]))
         
-        # Construct full voice prompt path
+        # Construct full voice prompt path, confining the client-supplied
+        # filename to the voice prompt directory (no path traversal).
         requested_voice_prompt_path = None
         voice_prompt_path = None
         if self.voice_prompt_dir is not None:
-            voice_prompt_filename = request.query["voice_prompt"]
-            requested_voice_prompt_path = None
-            if voice_prompt_filename is not None:
-                requested_voice_prompt_path = os.path.join(self.voice_prompt_dir, voice_prompt_filename)
-            # If the voice prompt file does not exist, find a valid (s0) voiceprompt file in the directory
-            if requested_voice_prompt_path is None or not os.path.exists(requested_voice_prompt_path):
-                raise FileNotFoundError(
-                    f"Requested voice prompt '{voice_prompt_filename}' not found in '{self.voice_prompt_dir}'"
+            voice_prompt_filename = request.query.get("voice_prompt", "")
+            if not voice_prompt_filename:
+                raise web.HTTPBadRequest(reason="missing 'voice_prompt' query parameter")
+            voice_dir = os.path.realpath(self.voice_prompt_dir)
+            requested_voice_prompt_path = os.path.realpath(
+                os.path.join(voice_dir, voice_prompt_filename)
+            )
+            if os.path.commonpath([voice_dir, requested_voice_prompt_path]) != voice_dir:
+                raise web.HTTPBadRequest(reason="invalid 'voice_prompt' filename")
+            if not os.path.exists(requested_voice_prompt_path):
+                raise web.HTTPNotFound(
+                    reason=f"Requested voice prompt '{voice_prompt_filename}' "
+                           f"not found in '{self.voice_prompt_dir}'"
                 )
-            else:
-                voice_prompt_path = requested_voice_prompt_path
-                
-        if self.lm_gen.voice_prompt != voice_prompt_path:
+            voice_prompt_path = requested_voice_prompt_path
+
+        if voice_prompt_path is not None and self.lm_gen.voice_prompt != voice_prompt_path:
             if voice_prompt_path.endswith('.pt'):
                 # Load pre-saved voice prompt embeddings
                 self.lm_gen.load_voice_prompt_embeddings(voice_prompt_path)
             else:
                 self.lm_gen.load_voice_prompt(voice_prompt_path)
-        self.lm_gen.text_prompt_tokens = self.text_tokenizer.encode(wrap_with_system_tags(request.query["text_prompt"])) if len(request.query["text_prompt"]) > 0 else None
-        seed = int(request["seed"]) if "seed" in request.query else None
+        text_prompt = request.query.get("text_prompt", "")
+        self.lm_gen.text_prompt_tokens = self.text_tokenizer.encode(wrap_with_system_tags(text_prompt)) if len(text_prompt) > 0 else None
+        seed = int(request.query["seed"]) if "seed" in request.query else None
 
         async def recv_loop():
             nonlocal close
@@ -251,9 +257,9 @@ class ServerState:
                     await ws.send_bytes(b"\x01" + msg)
 
         clog.log("info", "accepted connection")
-        if len(request.query["text_prompt"]) > 0:
-            clog.log("info", f"text prompt: {request.query['text_prompt']}")
-        if len(request.query["voice_prompt"]) > 0:
+        if len(text_prompt) > 0:
+            clog.log("info", f"text prompt: {text_prompt}")
+        if voice_prompt_path is not None:
             clog.log("info", f"voice prompt: {voice_prompt_path} (requested: {requested_voice_prompt_path})")
         close = False
         async with self.lock:
@@ -309,6 +315,15 @@ class ServerState:
         return ws
 
 
+def _safe_extractall(tar: tarfile.TarFile, path) -> None:
+    """Extract a tar archive, refusing members that escape `path` (PEP 706)."""
+    try:
+        tar.extractall(path=path, filter="data")
+    except TypeError:
+        # Python without PEP 706 extraction filters (< 3.10.12)
+        tar.extractall(path=path)
+
+
 def _get_voice_prompt_dir(voice_prompt_dir: Optional[str], hf_repo: str) -> Optional[str]:
     """
     If voice_prompt_dir is None:
@@ -330,7 +345,7 @@ def _get_voice_prompt_dir(voice_prompt_dir: Optional[str], hf_repo: str) -> Opti
     if not voices_dir.exists():
         logger.info(f"extracting {voices_tgz} to {voices_dir}")
         with tarfile.open(voices_tgz, "r:gz") as tar:
-            tar.extractall(path=voices_tgz.parent)
+            _safe_extractall(tar, voices_tgz.parent)
 
     if not voices_dir.exists():
         raise RuntimeError("voices.tgz did not contain a 'voices/' directory")
@@ -346,7 +361,7 @@ def _get_static_path(static: Optional[str]) -> Optional[str]:
         dist = dist_tgz.parent / "dist"
         if not dist.exists():
             with tarfile.open(dist_tgz, "r:gz") as tar:
-                tar.extractall(path=dist_tgz.parent)
+                _safe_extractall(tar, dist_tgz.parent)
         return str(dist)
     elif static != "none":
         # When set to the "none" string, we don't serve any static content.
@@ -354,7 +369,7 @@ def _get_static_path(static: Optional[str]) -> Optional[str]:
     return None
 
 
-def main():
+def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="localhost", type=str)
     parser.add_argument("--port", default=8998, type=int)
@@ -465,7 +480,7 @@ def main():
         logger.info(f"serving static content from {static_path}")
         app.router.add_get("/", handle_root)
         app.router.add_static(
-            "/", path=static_path, follow_symlinks=True, name="static"
+            "/", path=static_path, follow_symlinks=False, name="static"
         )
     protocol = "http"
     ssl_context = None
@@ -476,8 +491,13 @@ def main():
     if setup_tunnel is not None:
         tunnel = setup_tunnel('localhost', args.port, tunnel_token, None)
         logger.info(f"Tunnel started, if executing on a remote GPU, you can use {tunnel}.")
-    web.run_app(app, port=args.port, ssl_context=ssl_context)
+    web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
 
 
-with torch.no_grad():
+def main():
+    with torch.no_grad():
+        _main()
+
+
+if __name__ == "__main__":
     main()

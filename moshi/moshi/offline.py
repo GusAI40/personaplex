@@ -122,6 +122,15 @@ def decode_tokens_to_pcm(mimi: MimiModel, other_mimi: MimiModel, lm_gen: LMGen, 
     return pcm
 
 
+def _safe_extractall(tar: tarfile.TarFile, path) -> None:
+    """Extract a tar archive, refusing members that escape `path` (PEP 706)."""
+    try:
+        tar.extractall(path=path, filter="data")
+    except TypeError:
+        # Python without PEP 706 extraction filters (< 3.10.12)
+        tar.extractall(path=path)
+
+
 def _get_voice_prompt_dir(voice_prompt_dir: Optional[str], hf_repo: str) -> Optional[str]:
     """
     If voice_prompt_dir is None:
@@ -142,7 +151,7 @@ def _get_voice_prompt_dir(voice_prompt_dir: Optional[str], hf_repo: str) -> Opti
     if not voices_dir.exists():
         log("info", f"extracting {voices_tgz} to {voices_dir}")
         with tarfile.open(voices_tgz, "r:gz") as tar:
-            tar.extractall(path=voices_tgz.parent)
+            _safe_extractall(tar, voices_tgz.parent)
 
     if not voices_dir.exists():
         raise RuntimeError("voices.tgz did not contain a 'voices/' directory")

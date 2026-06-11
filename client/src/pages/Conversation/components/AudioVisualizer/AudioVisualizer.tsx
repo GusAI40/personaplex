@@ -26,7 +26,7 @@ export const AudioVisualizer: FC<AudioVisualizerProps> = ({ analyser }) => {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     for (let i = 0; i < audioData.length; i++) {
       start = i * 4;
-      let gradient = ctx.createLinearGradient(
+      const gradient = ctx.createLinearGradient(
         0,
         0,
         canvasRef.current.width,
